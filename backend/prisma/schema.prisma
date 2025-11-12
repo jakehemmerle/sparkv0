@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  fileName    String   @map("file_name")
+  filePath    String   @map("file_path")
+  duration    Int?
+  status      String   @default("uploading") // 'uploading' | 'processing' | 'ready' | 'failed'
+  assemblyId  String?  @map("assembly_id")
+  tokenCount  Int      @default(0) @map("token_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  transcripts Transcript[]
+  questions   Question[]
+
+  @@map("sessions")
+}
+
+model Transcript {
+  id             String  @id @default(uuid())
+  sessionId      String  @map("session_id")
+  segments       String  // JSON string
+  speakerAIsJake Boolean @default(true) @map("speaker_a_is_jake")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("transcripts")
+}
+
+model Question {
+  id         String   @id @default(uuid())
+  sessionId  String   @map("session_id")
+  question   String
+  answer     String
+  tokenCount Int      @default(0) @map("token_count")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
