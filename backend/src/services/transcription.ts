@@ -49,13 +49,13 @@ export async function processCompletedTranscript(sessionId: string, transcript: 
     }
   })
   
-  // Calculate token count (will be implemented in SPK-15)
+  // Calculate token count
   let tokenCount = 0
   try {
     const { countTranscriptTokens } = await import('./tokens')
     tokenCount = countTranscriptTokens(segments)
   } catch (err) {
-    console.log('Token counting not yet available')
+    console.warn('Token counting failed, defaulting to 0:', err)
   }
   
   // Update session

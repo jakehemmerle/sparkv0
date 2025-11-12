@@ -85,7 +85,10 @@ router.post('/', upload.single('audio'), async (req: Request, res: Response) => 
         }
       })
 
-      res.status(201).json({ session: { ...session, status: 'processing', assemblyId } })
+      const updatedSession = await prisma.session.findUnique({
+        where: { id: session.id }
+      })
+      res.status(201).json({ session: updatedSession })
     } catch (transcriptionError: any) {
       console.error('Error submitting transcription:', transcriptionError)
       
@@ -171,8 +174,13 @@ router.get('/:id/status', async (req: Request, res: Response) => {
             data: { status: 'failed' }
           })
           
+          const failedSession = await prisma.session.findUnique({
+            where: { id },
+            include: { transcripts: true }
+          })
+          
           return res.json({ 
-            session: { ...session, status: 'failed' },
+            session: failedSession,
             error: transcript.error 
           })
         }

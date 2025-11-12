@@ -83,9 +83,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return
     }
     
+    let errorCount = 0
+    const maxErrors = 5
+    
     const interval = setInterval(async () => {
       try {
         const session = await getSessionStatus(sessionId)
+        errorCount = 0 // Reset on success
         get().updateSession(sessionId, session)
         
         // Stop polling if no longer processing
@@ -94,7 +98,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         }
       } catch (error: any) {
         console.error('Error polling session status:', error)
-        // Continue polling even on error
+        errorCount++
+        if (errorCount >= maxErrors) {
+          console.error(`Max polling errors reached for session ${sessionId}, stopping poll`)
+          get().stopPolling(sessionId)
+          get().updateSession(sessionId, { status: 'failed' })
+        }
       }
     }, 3000) // Poll every 3 seconds
     

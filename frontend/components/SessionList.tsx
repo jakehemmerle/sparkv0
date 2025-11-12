@@ -39,11 +39,14 @@ function StatusBadge({ status }: { status: Session['status'] }) {
 }
 
 export default function SessionList() {
-  const { sessions, loading, error, fetchSessions } = useSessionStore()
+  const { sessions, loading, error, fetchSessions, stopAllPolling } = useSessionStore()
 
   useEffect(() => {
     fetchSessions()
-  }, [fetchSessions])
+    return () => {
+      stopAllPolling()
+    }
+  }, [fetchSessions, stopAllPolling])
 
   if (loading) {
     return (
