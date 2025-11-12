@@ -108,6 +108,18 @@ export async function getSession(id: string): Promise<SessionWithDetails> {
   return data.session
 }
 
+export async function getSessionStatus(id: string): Promise<SessionWithDetails> {
+  const response = await fetch(`${API_BASE_URL}/api/sessions/${id}/status`)
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to fetch session status' }))
+    throw new ApiError(response.status, error.error)
+  }
+
+  const data = await response.json()
+  return data.session
+}
+
 export async function swapSpeakers(sessionId: string): Promise<Transcript> {
   const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/speakers`, {
     method: 'PATCH'
