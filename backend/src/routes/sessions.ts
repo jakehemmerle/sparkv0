@@ -3,6 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import prisma from '../services/database'
+import { submitTranscription, getTranscriptionStatus, processCompletedTranscript } from '../services/transcription'
 
 const router = express.Router()
 
@@ -72,13 +73,33 @@ router.post('/', upload.single('audio'), async (req: Request, res: Response) => 
       }
     })
 
-    // Update status to ready (will be 'processing' once we add transcription)
-    await prisma.session.update({
-      where: { id: session.id },
-      data: { status: 'ready' }
-    })
+    // Start transcription
+    try {
+      const assemblyId = await submitTranscription(req.file.path)
+      
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { 
+          status: 'processing',
+          assemblyId 
+        }
+      })
 
-    res.status(201).json({ session })
+      res.status(201).json({ session: { ...session, status: 'processing', assemblyId } })
+    } catch (transcriptionError: any) {
+      console.error('Error submitting transcription:', transcriptionError)
+      
+      // Mark session as failed
+      await prisma.session.update({
+        where: { id: session.id },
+        data: { status: 'failed' }
+      })
+      
+      return res.status(500).json({ 
+        error: 'Failed to submit transcription',
+        details: transcriptionError.message 
+      })
+    }
   } catch (error: any) {
     console.error('Error creating session:', error)
     if (error.message === 'Only M4A audio files are allowed') {
@@ -109,6 +130,70 @@ router.get('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching session:', error)
     res.status(500).json({ error: 'Failed to fetch session' })
+  }
+})
+
+// GET /api/sessions/:id/status - Get session status and poll AssemblyAI if processing
+router.get('/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: {
+        transcripts: true
+      }
+    })
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' })
+    }
+
+    // Fetch latest status from AssemblyAI if still processing
+    if (session.status === 'processing' && session.assemblyId) {
+      try {
+        const transcript = await getTranscriptionStatus(session.assemblyId)
+        
+        // Update database if completed/failed
+        if (transcript.status === 'completed') {
+          await processCompletedTranscript(session.id, transcript)
+          
+          // Fetch updated session
+          const updatedSession = await prisma.session.findUnique({
+            where: { id },
+            include: { transcripts: true }
+          })
+          
+          return res.json({ session: updatedSession })
+        } else if (transcript.status === 'error') {
+          await prisma.session.update({
+            where: { id: session.id },
+            data: { status: 'failed' }
+          })
+          
+          return res.json({ 
+            session: { ...session, status: 'failed' },
+            error: transcript.error 
+          })
+        }
+        
+        // Still processing, return current status
+        return res.json({ 
+          session,
+          assemblyStatus: transcript.status 
+        })
+      } catch (assemblyError: any) {
+        console.error('Error fetching AssemblyAI status:', assemblyError)
+        // Return current database status even if AssemblyAI fails
+        return res.json({ session })
+      }
+    }
+
+    // Session not processing, just return current state
+    res.json({ session })
+  } catch (error) {
+    console.error('Error fetching session status:', error)
+    res.status(500).json({ error: 'Failed to fetch session status' })
   }
 })
 

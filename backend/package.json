@@ -12,10 +12,12 @@
   "packageManager": "pnpm@10.20.0",
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "assemblyai": "^4.19.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "tiktoken": "^1.0.22"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
