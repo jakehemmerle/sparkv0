@@ -16,6 +16,8 @@ backend/dist/
 # Database
 backend/database.sqlite
 backend/database.sqlite-journal
+backend/prisma/database.sqlite
+backend/prisma/database.sqlite-journal
 
 # Uploads
 backend/src/uploads/*

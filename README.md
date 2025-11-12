@@ -4,38 +4,45 @@ A web-based application to transcribe conversations between Jake and Edmund with
 
 ## Features
 
-- 🎙️ **Audio Upload**: Drag-and-drop M4A audio files
-- 🗣️ **Speaker Diarization**: Automatic identification of Jake and Edmund using AssemblyAI
-- 💬 **Conversation View**: Chat-style transcript display with timestamps
-- 🤖 **AI Q&A**: Ask questions about conversations using GPT-4o
-- 📊 **Token Tracking**: Monitor token usage for transcripts and Q&A
+### ✅ Implemented
+- 🎙️ **Audio Upload**: Drag-and-drop M4A audio files with progress tracking
+- 🗣️ **Speaker Diarization**: Automatic speaker identification using AssemblyAI
+- 📊 **Token Tracking**: Real-time token counting for transcripts
+- 🔄 **Real-time Status Polling**: Auto-updates during transcription processing
+- 📋 **Session Management**: View and manage all transcription sessions
+
+### 🚧 Planned
+- 💬 **Conversation View**: Chat-style transcript display with timestamps (Phase 4)
+- 🔄 **Speaker Swap**: Swap Jake/Edmund assignment if diarization is incorrect (Phase 4)
+- 🤖 **AI Q&A**: Ask questions about conversations using GPT-4o (Phase 5)
 
 ## Tech Stack
 
 ### Frontend
 - **Next.js 16** with App Router
+- **React 19**
 - **TypeScript**
-- **Tailwind CSS** for styling
+- **Tailwind CSS v4** for styling
 - **Zustand** for state management
 - **react-dropzone** for file uploads
 
 ### Backend
 - **Node.js** with Express
 - **TypeScript**
-- **SQLite** with better-sqlite3
-- **AssemblyAI** for transcription
-- **OpenAI GPT-4o** for Q&A
+- **SQLite** with Prisma ORM
+- **AssemblyAI SDK (v4.19)** for transcription with speaker diarization
+- **tiktoken** for GPT-4o token counting
+- **Multer** for file uploads
 
 ### Package Manager
-- **pnpm** (required)
+- **pnpm 10+** (required)
 
 ## Prerequisites
 
 - **Node.js** 18+ 
 - **pnpm** 10+
-- **Python 3** (for better-sqlite3 native module compilation)
-- **AssemblyAI API Key**
-- **OpenAI API Key**
+- **AssemblyAI API Key** ([Get one here](https://www.assemblyai.com/))
+- **OpenAI API Key** (for Phase 5 Q&A feature)
 
 ## Setup Instructions
 
@@ -59,37 +66,46 @@ pnpm install
 cd backend
 pnpm install
 
-# Build better-sqlite3 native module
-cd node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3
-npm run build-release
-cd ../../../../..
+# Generate Prisma Client
+pnpm prisma generate
 ```
 
 ### 3. Environment Configuration
 
-Create a `.env` file in the `backend` directory:
+Create a `.env` file in the **root directory**:
+
+```bash
+# Copy from .env.example if available, or create manually
+touch .env
+```
+
+Add your API keys to `.env`:
+
+```env
+# Backend API
+PORT=3002
+
+# Database
+DATABASE_URL="file:./prisma/database.sqlite"
+
+# AI Services
+ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here  # For Phase 5
+```
+
+### 4. Database Setup
+
+Initialize the Prisma database:
 
 ```bash
 cd backend
-cp .env.example .env  # or create manually
+pnpm prisma db push
 ```
 
-Add your API keys to `backend/.env`:
-
-```env
-PORT=3002
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-DATABASE_PATH=./database.sqlite
-UPLOAD_DIR=./src/uploads
-```
-
-### 4. Database Initialization
-
-The database will automatically initialize when you start the backend server. The following tables will be created:
-- `sessions` - Audio session metadata
+This creates the SQLite database with the following tables:
+- `sessions` - Audio session metadata (status, duration, token count)
 - `transcripts` - Transcription segments with speaker info
-- `questions` - Q&A history
+- `questions` - Q&A history (Phase 5)
 
 ## Development
 
@@ -152,12 +168,13 @@ sparkv0/
 ## API Endpoints
 
 ### Sessions
-- `POST /api/sessions` - Create session & upload audio
-- `GET /api/sessions` - List all sessions
-- `GET /api/sessions/:id` - Get session details + transcript
-- `PATCH /api/sessions/:id/speakers` - Swap Jake/Edmund assignment
+- `POST /api/sessions` - Upload M4A audio and create session
+- `GET /api/sessions` - List all sessions (ordered by date)
+- `GET /api/sessions/:id` - Get session details with transcript
+- `GET /api/sessions/:id/status` - Get real-time transcription status (polls AssemblyAI)
+- `PATCH /api/sessions/:id/speakers` - Swap Jake/Edmund assignment (Phase 4)
 
-### Q&A
+### Q&A (Phase 5)
 - `POST /api/sessions/:id/questions` - Ask question about session
 - `GET /api/sessions/:id/questions` - Get Q&A history
 
@@ -184,16 +201,24 @@ pnpm start
 
 ## Troubleshooting
 
-### better-sqlite3 Build Issues
+### Prisma Client Not Generated
 
-If you encounter issues with better-sqlite3:
+If you see Prisma import errors:
 
 ```bash
-cd backend/node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3
-npm run build-release
+cd backend
+pnpm prisma generate
 ```
 
-Make sure you have Python 3 installed and available in your PATH.
+### Database Schema Changes
+
+After modifying `backend/prisma/schema.prisma`:
+
+```bash
+cd backend
+pnpm prisma db push
+pnpm prisma generate
+```
 
 ### Port Already in Use
 
@@ -221,30 +246,39 @@ corepack prepare pnpm@latest --activate
 
 See [PRD.md](./PRD.md) for detailed feature specifications and implementation phases.
 
-### Phase 1: Project Setup ✅
-- [x] Initialize Next.js frontend
-- [x] Initialize Express backend
-- [x] Set up SQLite database
+### Phase 1: Project Setup ✅ Complete
+- [x] Initialize Next.js 16 frontend with TypeScript
+- [x] Initialize Express backend with TypeScript
+- [x] Set up SQLite with Prisma ORM
+- [x] Configure project structure
 
-### Phase 2: Audio Upload UI (In Progress)
-- [ ] Implement drag-and-drop component
-- [ ] Create upload endpoint
-- [ ] Build session list view
+### Phase 2: Audio Upload UI ✅ Complete
+- [x] Implement drag-and-drop component with react-dropzone
+- [x] Add M4A file validation
+- [x] Create upload endpoint with progress tracking
+- [x] Build session list view with Zustand store
 
-### Phase 3: Transcription
-- [ ] Integrate AssemblyAI SDK
-- [ ] Implement async transcription
-- [ ] Store segments in database
+### Phase 3: Backend & AssemblyAI Integration ✅ Complete
+- [x] Integrate AssemblyAI SDK with speaker diarization
+- [x] Implement async transcription workflow
+- [x] Add real-time status polling
+- [x] Parse and store utterances in database
+- [x] Implement token counting with tiktoken
+- [x] Handle transcription errors with retry logic
 
-### Phase 4: Conversation View
+### Phase 4: Conversation View 🚧 Next
 - [ ] Build chat-style transcript UI
-- [ ] Add speaker swap functionality
-- [ ] Display token counts
+- [ ] Add timestamp display for each segment
+- [ ] Implement speaker swap functionality
+- [ ] Display total token count
+- [ ] Add navigation from session list
 
-### Phase 5: Q&A Feature
-- [ ] Integrate GPT-4o API
-- [ ] Build Q&A interface
+### Phase 5: Q&A Feature 🚧 Planned
+- [ ] Integrate OpenAI GPT-4o API
+- [ ] Build Q&A chat interface
 - [ ] Implement context management
+- [ ] Display answers with timestamp references
+- [ ] Track Q&A token usage
 
 ## Contributing
 
